@@ -1,57 +1,58 @@
 import express from "express";
-import { Principal, Server, nat,StableBTreeMap, ic,nat16,nat64,Opt } from "azle";
+import { Server, StableBTreeMap } from "azle";
 import { v4 as uuidv4 } from 'uuid';
 
-// TODO: creating classes for cars, staff, and owner
-class Car {
-    id!: string;
-    name!: string;
-    brand!: string;
-    type!: string;
-    price!: string;
+// Define interfaces for data structures
+interface Car {
+    id: string;
+    name: string;
+    brand: string;
+    type: string;
+    price: string;
 }
 
-class Staffs{
-    username!: string;
-    name!: string;
-    has_write_permission!: boolean;
+interface Staff {
+    username: string;
+    name: string;
+    hasWritePermission: boolean;
 }
 
-class Owner {
-    username!: string;
-    password!: string;
+interface Owner {
+    username: string;
+    password: string;
 }
 
 const owners = StableBTreeMap<string, Owner>(2);
 const carStorage = StableBTreeMap<string, Car>(0);
-const staffs = StableBTreeMap<string, Staffs>(1);
+const staffs = StableBTreeMap<string, Staff>(1);
 
-// TODO: creating a authenticator to distinguish between staff and owner
+// Middleware to authenticate owner
 function authenticateOwner(req: express.Request, res: express.Response, next: express.NextFunction) {
     const username = req.headers["username"] as string;
     const password = req.headers["password"] as string;
 
     const ownerOpt = owners.get(username);
 
-    if ("None" in ownerOpt || ownerOpt.Some.password !== password) {
+    if (!ownerOpt || ownerOpt.password !== password) {
         res.status(401).send("Unauthorized");
     } else {
         next();
     }
 }
 
-
-// TODO: creating the backend functions managing cars and staff 
+// Define the server
 export default Server(() =>  {
     const app = express();
     app.use(express.json());
+
+    // Route to buy a car
     app.post("/buy", (req, res) => {
         const car: Car = { id: uuidv4(), ...req.body };
         carStorage.insert(car.id, car);
         res.json(car);
     });
 
-    // * Function for listing all the cars
+    // Route to get all cars
     app.get("/cars", (req, res) => {
         res.json(carStorage.values());
     });
@@ -113,6 +114,5 @@ export default Server(() =>  {
             res.json({ message: `Staff with username=${staffUsername} removed successfully` });
         }
     });
-
     return app.listen();
 });
